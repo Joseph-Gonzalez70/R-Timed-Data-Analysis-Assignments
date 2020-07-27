@@ -1,0 +1,151 @@
+---
+title: "Timed Skills Assessment"
+output:
+  word_document: default
+  html_document: default
+date: "3/30/20"
+---
+
+
+**Instruction**:  <br>
+
+* In this problem, you are asked to build regression models to predict a variable of interest. Try your best to find models that meet the stated requirements. However,
+partial credits may be given even if your models are not totally satisfactory. You need to provide justifications for your answers and please keep them concise and to the point.  <br>
+
+## Data description
+In *cars.Rdata* you will find a data set called *cars* collected on 392 cars. The variables
+being recorded are *mileage per gallon (mpg)*  and seven potential predictors for *mpg*:  *number of cylinders*, *displacement*, *horsepower*,
+*weight*, *acceleration*, *year of make* and *country code*. Your task is to build a prediction model
+for *mpg* using this data. Please first load the data and the *MASS* library into the R workspace by running the following code: 
+
+```{r,echo=T,results=F,message=F}
+load("cars.Rdata")
+library(MASS)
+attach(cars)
+```
+
+## Part 1 
+**In part 1, you can ONLY use *horsepower* as a predictor variable for *mpg* and you should ignore the other six variables**. You need to finish the following tasks:  <br>
+
+  * **1(a). Draw a scatter plot of *mpg* versus *horsepower* and describe how the two are releted.** <br>
+
+<b> Solution: </b> From the scatter plot, the relationship appears to be curvilinear. In particular, mpg appears to decrease as horsepower increases. I would describe this as a negative curvilinear relationship. 
+
+
+```{r}
+# 1(a). \
+plot(cars$horsepower,cars$mpg, main="mpg vs. horsepower",xlab="horsepower",ylab="mpg")
+```
+
+  * **1(b). Fit a regression model using *horsepower* to predict *mpg* and describe how you reach this model. The model must satisfy
+the following requirements:  ** <br>
+    + (i) It contains only one X variable.<br>
+    + (ii) There is no severe depature from the model assumptions. 
+    + (iii) The coefficient of determination is at least $0.7$.
+
+
+
+
+<b> Solution: </b> First we get a preliminary fit and check model diagnostics. From the summary of the preliminary fit, we see that the coefficient of determination is not at least $0.7$. For the preliminary fit, the residuals vs. fitted values indicates non-constant variance and there appears to be a deviation from linearity. The Q-Q plot indicates that there is more probability in the right tail(right tail heavy) and slightly less probability in the left tail. From the residuals histogram, we see that the residuals are slightly right scewed. If we run the boxcox test, we see it recommends a transform of the response variable to the power (-1/2). This will hopefully correct the deviations from model assumptions. Next, we fit the model with the horse power quadratic term. We center horse power to reduce correlation between the two terms. The summary indicates that the coeffiecient of determination is above 0.7(satisfies two). We check the model diagnostics plots once more and see that there is no deviation from constant variance and the QQ plot is satisfactory for the noramlity assumption.
+```{r}
+# 1(b). (Type your code in the space below)
+#fit model
+fit1=lm(mpg~horsepower, data=cars)
+summary(fit1)
+#model diagnostics
+plot(fit1, which=1)
+plot(fit1, which=2)
+hist(fit1$residuals)
+boxcox(mpg~horsepower)
+mpgtransform=(mpg)^(-1/2)
+#Fit model with quadratic term
+#center the values to reduce correlation
+centeredhorse=horsepower-mean(horsepower)
+sqcenthorse=centeredhorse^2
+datanew=data.frame(cbind(mpgtransform,centeredhorse,sqcenthorse))
+fit2=lm(mpgtransform~centeredhorse+sqcenthorse, data=datanew)
+summary(fit2)
+plot(fit2, which=1)
+plot(fit2, which=2)
+```
+
+  * **1(c). Under the model you reached in 1(b), obtain a $90\%$ prediction interval of the *mpg*
+for a car with 100 *horsepower*. Can you use this model to predict the *mpg* for a
+car with 500 *horsepower*? Please explain.** <br>
+
+<b> Solution: </b> We first adjust the new values to be able to substitute into the model. The adjustment is centering, which means we substract the mean of horsepower(cars data set) from the new observation. Then, we use the predict function with interval set to "prediction" to get the confidence interval. The interval produces the prediction interval of (0.1849617,0.2472408). These values are in the form of the transformed mpg variable. We can use the inverse of the function we applied in section b to get the real valued mpg. The placement of the upper and lower bound is also switched due to the transformation(smaller numbers produced larger values after being transformed and vice versa). After some calculation, the CI is (16.35911,29.23051). We are 90 percent confident that when a new observed cars horse power is 100 horse power its mpg is between 16.35911 mpg and 29.23091 mpg. The max horsepower is 230. I do not recommend using this model to predict mpg for a car with 500 horsepower because it is well beyond the range of horsepower. This would be extrapolation(trying to predict outside the range of values), which would not give us a precise values without extra caution.
+
+
+
+```{r}
+# 1(c). (Type your code in the space below)
+#First must adjust the new observation
+newobser=100-mean(cars$horsepower)
+newobservsquared=newobser^2
+newX = data.frame(centeredhorse=newobser, sqcenthorse=newobservsquared)
+predict(fit2, newX, interval="prediction", level=0.90, se.fit=TRUE)
+#Transform back to mpg
+UB=(0.1849617)^(-2)
+LB=(0.2472408)^(-2)
+LB
+UB
+# Can we use model to predict 500 horse power
+#check range of horse power
+range(cars$horsepower)
+max(cars$horsepower)
+
+```
+
+# Part II
+**In this part, you will use the entire data set to build a model.**  You need to finish the following tasks:  <br>
+
+
+  * **2(a). Use the function 'class' to check data type of each variable. Fix variable type as needed. ** 
+
+<b> Solution: </b> mpg, displacement, horsepower, weight, and accleration seem to have the correct class. We fix change country code and cylinders to factors.
+
+```{r}
+# 2(a). (Type your code in the space below)
+sapply(cars,class)
+cars$country.code=factor(cars$country.code)
+cars$cylinders=factor(cars$cylinders)
+sapply(cars,class)
+```
+
+  * **2(b). Fit a regression model to predict *mpg* and describe how you reach this model. The model must satisfy
+the following requirements:  ** <br>
+    + (i) It involves at most four predictors.<br>
+    + (ii) There is no severe depature from the model assumptions. 
+    + (iii) The adjusted coefficient of determination is at least $0.85$.
+
+<b> Solution: </b> First, we get a preliminary fit. Then, check the model diagnostics. The Q-Q plot shows that the distribution is right-tailed heavy and slightly left tailed heavy. The residuals vs. fitted values indicates that there is possibly a curvilinear relationship between Y and some response variables. Next, we look at the residuals histogram and boxcox procedure for Y to see if any preliminary transformation for this variable is needed. The histogram shows that the residuals are slightly right screwed and the box cox shows that a transformation is suggested that we take the log transform of mpg. To get an idea of which variables to add, I looked at the correlation matrix and pairwise scatter plots for the variables. The relationship between Displacement and mpg looks curvilinear, horsepower and mpg looks curvilinear, mpg and weight looks curvilinear and acceleration and mpg look to have a positive linear relationship. The correlation matrix shows that the numeric predictor variables are highly to moderately correlated to the response variable. In addition, some are moderately to highly correlated with other predictor variables, such as displacement and weight. This means there might be high multicollinearity in the dataset(watch out how we interpret t-test). Next, we would test variables and their quadratic terms for new fits(watching out for which variable to include because of high correlation). After getting the final fit, we would check model diagnostics one last time to confirm no large deviation from model assumptions.(Ran out of time)
+
+ 
+```{r}
+# 2(b). (Type your code in the space below)
+#prelimary fit
+fit3= lm(mpg~.,data=cars)
+summary(fit3)
+#check model diagnostics
+plot(fit3,which=1)
+plot(fit3,which=2)
+#use boxcox to see if transformation is needed
+hist(fit3$residuals)
+boxcox(mpg~.,data=cars)
+cars$mpg=log(cars$mpg)
+#check correlation matrix and pairwise scatter plot
+pairs(cars[,c(1,3,4,5,6)])
+cor(cars[,c(1,3,4,5,6)])
+```
+ 
+
+
+
+
+
+
+
+
+
+
+
