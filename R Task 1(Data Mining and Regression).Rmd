@@ -33,7 +33,7 @@ attach(cars)
 
 
 ```{r}
-# 1(a). \
+# 1(a). 
 plot(cars$horsepower,cars$mpg, main="mpg vs. horsepower",xlab="horsepower",ylab="mpg")
 ```
 
